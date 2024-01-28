@@ -3,12 +3,12 @@ use std::str;
 
 #[derive(Debug, Copy, Clone)]
 pub struct Compressor<'a> {
-    pub words: [&'a str; 256],
+    pub words: &'a Vec<String>,
     pub bi_grams: &'a str,
 }
 
 impl<'a> Compressor<'a> {
-    pub fn new(words: [&'a str; 256], bi_grams: &'a str) -> Compressor<'a> {
+    pub fn new(words: &'a Vec<String>, bi_grams: &'a str) -> Compressor<'a> {
         Self { words, bi_grams }
     }
 
@@ -17,7 +17,7 @@ impl<'a> Compressor<'a> {
         let mut compressed: Vec<u8> = Vec::new();
         let mut verbatim_len: usize = 0;
 
-        let bi_gram_vec = self.bi_grams.as_bytes().to_vec();
+        let bi_gram_vec = &self.bi_grams.as_bytes().to_vec();
 
         while !original.is_empty() {
             // try to find a matching word
@@ -28,7 +28,7 @@ impl<'a> Compressor<'a> {
                 original.len() > (word_len + space_delta) && original[space_delta..word_len + space_delta].eq(word.as_bytes())
             });
             if let Some(i) = word_match {
-                let matched_word = self.words[i];
+                let matched_word = self.words.get(i).expect("failed to get word in table");
                 let matched_word_len = matched_word.len();
                 if original[0].is_ascii_whitespace() {
                     compressed.push(8);
@@ -49,14 +49,14 @@ impl<'a> Compressor<'a> {
             }
 
             if original.len() > 2 {
-                for (i, _) in bi_gram_vec.clone().into_iter().enumerate().step_by(2) {
+                for (i, _) in bi_gram_vec.into_iter().enumerate().step_by(2) {
                     let bi_gram = &original[0..=1];
                     let slice = &bi_gram_vec[i..=i+1];
                     if bi_gram[0] == slice[0] && bi_gram[1] == slice[1] {
                         break
                     }
                 }
-                let bi_gram_match = bi_gram_vec.clone().into_iter().enumerate().step_by(2).position(|(i, _)| {
+                let bi_gram_match = bi_gram_vec.into_iter().enumerate().step_by(2).position(|(i, _)| {
                     let bi_gram = &original[0..=1];
                     let slice = &bi_gram_vec[i..=i+1];
                     bi_gram.eq(slice)
